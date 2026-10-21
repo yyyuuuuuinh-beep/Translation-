@@ -1,0 +1,45 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Android SDK مثبّت مسبقاً على خوادم ubuntu-latest
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5
+
+      # يعمل في الحالتين: ملفات المشروع مرفوعة مباشرة، أو مرفوع GameTranslator.zip فقط
+      - name: Build debug APK
+        run: |
+          if [ -f GameTranslator.zip ]; then
+            unzip -q -o GameTranslator.zip
+            cd GameTranslator
+          fi
+          gradle assembleDebug --no-daemon --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GameTranslator-APK
+          path: "**/build/outputs/apk/debug/*.apk"
+
+      - name: Publish to Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: GameTranslator build ${{ github.run_number }}
+          files: "**/build/outputs/apk/debug/*.apk"
